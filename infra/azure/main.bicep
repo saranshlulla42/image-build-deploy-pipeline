@@ -10,6 +10,8 @@ param sshPublicKey string
 param githubSubject string
 param shutdownTime string = '2300'
 param shutdownTimeZone string = 'India Standard Time'
+@description('DevTestLab schedules are not offered in Malaysia West. The scheduler targets the same VM by resource ID.')
+param shutdownLocation string = 'koreacentral'
 
 var tags = { project: 'image-build-deploy-pipeline', purpose: 'student-demo' }
 var init = '''
@@ -102,7 +104,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = {
 }
 resource shutdown 'Microsoft.DevTestLab/schedules@2018-09-15' = {
   name: 'shutdown-computevm-${vmName}'
-  location: location
+  location: shutdownLocation
   tags: tags
   properties: {
     status: 'Enabled'

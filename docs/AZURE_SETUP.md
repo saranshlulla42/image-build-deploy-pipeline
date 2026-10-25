@@ -64,6 +64,8 @@ Retail USD rates checked October 25, 2026: VM $0.0428/hour allocated; Standard I
 
 Daily automatic shutdown is configured at **23:00 India Standard Time**. There is no automatic startup. Before an assessment:
 
+The scheduler resource is hosted in Korea Central because DevTestLab schedules are unavailable in Malaysia West. It references the Malaysia West VM by its resource ID; the VM and its data stay in Malaysia West.
+
 ```bash
 az vm start --resource-group rg-image-pipeline-demo --name image-pipeline-vm
 # Verify /health and /version before presenting.
