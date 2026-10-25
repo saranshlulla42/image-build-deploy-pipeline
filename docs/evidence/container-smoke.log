@@ -1,0 +1,9 @@
+[2026-10-25 10:39:11 +0000] [1] [INFO] Starting gunicorn 26.2.0
+[2026-10-25 10:39:11 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)
+[2026-10-25 10:39:11 +0000] [1] [INFO] Using worker: sync
+[2026-10-25 10:39:11 +0000] [7] [INFO] Booting worker with pid: 7
+[2026-10-25 10:39:11 +0000] [8] [INFO] Booting worker with pid: 8
+172.17.0.1 - - [25/Oct/2026:10:39:12 +0000] "GET /health HTTP/1.1" 200 74 "-" "Python-urllib/3.14"
+172.17.0.1 - - [25/Oct/2026:10:39:12 +0000] "GET /version HTTP/1.1" 200 55 "-" "Python-urllib/3.14"
+1d7d1946a20b4b3ab0aaa294dacd00a24440e6131c9ca56bb68a6a57043f53ec
+{'status': 'verified', 'version': 'b2a0fbdee683813bfded6626cde0fb333933fa2d'}

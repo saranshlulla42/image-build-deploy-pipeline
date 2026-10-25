@@ -1,0 +1,10 @@
+{
+  "started_at": "2026-10-25T10:34:52.553325+00:00",
+  "image": "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "outcome": "failed_rolled_back",
+  "error": "error: timed out waiting for the condition",
+  "restored_version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "recovery_seconds": 3.362,
+  "elapsed_seconds": 31.81
+}

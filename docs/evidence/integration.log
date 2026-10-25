@@ -1,0 +1,98 @@
+namespace/image-pipeline created
+Image: "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6" with ID "sha256:f8ec954aeddec226c1f4c280062185f4f7fae8ef947bc95bceb2ae80841028e6" not yet present on node "pipeline-demo-control-plane", loading...
+Image: "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6-update" with ID "sha256:f8ec954aeddec226c1f4c280062185f4f7fae8ef947bc95bceb2ae80841028e6" not yet present on node "pipeline-demo-control-plane", loading...
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{
+  "started_at": "2026-10-25T10:34:25.761461+00:00",
+  "image": "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "outcome": "succeeded",
+  "elapsed_seconds": 8.596
+}
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{
+  "started_at": "2026-10-25T10:34:34.509726+00:00",
+  "image": "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6-update",
+  "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "outcome": "succeeded",
+  "elapsed_seconds": 16.782
+}
+{
+  "started_at": "2026-10-25T10:34:34.476513+00:00",
+  "url": "http://127.0.0.1:30080",
+  "requests": 175,
+  "failures": 0,
+  "versions": {
+    "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6": 175
+  },
+  "errors": [],
+  "command_exit": 0,
+  "elapsed_seconds": 17.935,
+  "observed_requests_per_second": 9.76,
+  "passed": true
+}
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{
+  "started_at": "2026-10-25T10:34:52.553325+00:00",
+  "image": "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "outcome": "failed_rolled_back",
+  "error": "error: timed out waiting for the condition",
+  "restored_version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "recovery_seconds": 3.362,
+  "elapsed_seconds": 31.81
+}
+{
+  "started_at": "2026-10-25T10:34:52.516404+00:00",
+  "url": "http://127.0.0.1:30080",
+  "requests": 322,
+  "failures": 0,
+  "versions": {
+    "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6": 322
+  },
+  "errors": [],
+  "command_exit": 1,
+  "elapsed_seconds": 32.945,
+  "observed_requests_per_second": 9.77,
+  "passed": true
+}
+Release verification failed: Served version does not match the requested source commit
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{"status": "verified", "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6"}
+{
+  "started_at": "2026-10-25T10:35:25.558673+00:00",
+  "image": "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "version": "0000000000000000000000000000000000000000",
+  "outcome": "failed_rolled_back",
+  "error": "error: timed out waiting for the condition on jobs/release-check-f42d73eea4",
+  "restored_version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "recovery_seconds": 15.09,
+  "elapsed_seconds": 46.741
+}
+namespace/image-pipeline-first-failure created
+{
+  "started_at": "2026-10-25T10:36:12.426840+00:00",
+  "image": "demo-app:27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "version": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "outcome": "failed_first_deployment",
+  "error": "error: timed out waiting for the condition",
+  "recovery_seconds": 0.097,
+  "elapsed_seconds": 25.305
+}
+namespace "image-pipeline-first-failure" deleted
+{
+  "environment": "local-kind",
+  "context": "kind-pipeline-demo",
+  "source_commit": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "scenarios": [
+    "initial-release",
+    "rolling-update",
+    "unhealthy-release-and-rollback",
+    "wrong-version-rejected",
+    "first-deployment-failure"
+  ],
+  "passed": true,
+  "elapsed_seconds": 132.106
+}

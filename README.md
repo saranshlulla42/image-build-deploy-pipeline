@@ -20,7 +20,9 @@ The release command checks readiness and the source version embedded in the imag
 
 ## Run the project locally
 
-Use macOS/Linux or a Linux shell with Docker, Python 3.12+, kubectl and kind. Docker must be running. The kind demo uses a dedicated cluster named `pipeline-demo` and localhost port 30080; it does not deploy into your current kubectl context.
+Use macOS/Linux or a Linux shell with Git, Docker, Python 3.12+, kubectl and kind. Docker must be running. The kind demo uses a dedicated cluster named `pipeline-demo` and localhost port 30080; it does not deploy into your current kubectl context.
+
+If you extracted a source ZIP, initialize Git and commit its contents before running the local helper, or clone the supplied Git bundle to preserve the original history. The embedded version needs a real source commit.
 
 ```bash
 python3 -m venv .venv

@@ -1,0 +1,9 @@
+{
+  "image": "demo-app:b2a0fbdee683813bfded6626cde0fb333933fa2d",
+  "source_commit": "b2a0fbdee683813bfded6626cde0fb333933fa2d",
+  "build_seconds": 2.307,
+  "cache_state": "dependency and base layers already cached",
+  "size_bytes": 213129866,
+  "architecture": "arm64",
+  "image_id": "sha256:e48eed436405f2c69d8996e3b8c38fdd265ff2b967e36fbdc7d69fba85122f2e"
+}

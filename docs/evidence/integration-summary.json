@@ -1,0 +1,14 @@
+{
+  "environment": "local-kind",
+  "context": "kind-pipeline-demo",
+  "source_commit": "27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6",
+  "scenarios": [
+    "initial-release",
+    "rolling-update",
+    "unhealthy-release-and-rollback",
+    "wrong-version-rejected",
+    "first-deployment-failure"
+  ],
+  "passed": true,
+  "elapsed_seconds": 132.106
+}
