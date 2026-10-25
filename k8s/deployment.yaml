@@ -1,18 +1,3 @@
-# ==============================================================================
-# Kubernetes Deployment Manifest: app-deployment
-# ==============================================================================
-# Purpose: Manages the lifecycle of our containerized application pods.
-# Key Features:
-# 1. High Availability: 2 replicas running across the cluster.
-# 2. Zero-Downtime Rolling Update:
-#    - maxUnavailable: 0 -> Ensures no existing pods are destroyed until new
-#      pods are verified healthy and ready.
-#    - maxSurge: 1 -> Spawns 1 new pod above the desired count during an update.
-# 3. Readiness Probe: Kubernetes actively probes "/health". Only when this probe
-#    passes will traffic be routed to the pod. If it fails, rollout stalls!
-# 4. Resource Constraints: Enforces CPU and memory limits to prevent runaway pods.
-# ==============================================================================
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,81 +5,78 @@ metadata:
   labels:
     app: demo-app
 spec:
-  # Maintain exactly 2 instances for redundancy and load balancing
   replicas: 2
-
-  # RollingUpdate strategy guarantees zero downtime
+  revisionHistoryLimit: 5
+  minReadySeconds: 3
+  progressDeadlineSeconds: 120
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      # maxUnavailable: 0 guarantees that at all times, 100% of the desired pods
-      # are available to serve incoming user traffic.
       maxUnavailable: 0
-      # maxSurge: 1 allows Kubernetes to temporarily create 1 extra pod while
-      # the new version is booting and passing health checks.
       maxSurge: 1
-
-  # Defines which pods this Deployment manages (must match template labels)
   selector:
     matchLabels:
       app: demo-app
-
-  # Pod template definition
   template:
     metadata:
       labels:
         app: demo-app
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: app
-          # The placeholder image below will be replaced dynamically during CI/CD
-          # with the exact Git commit SHA tag (e.g. ghcr.io/owner/repo:abc1234).
-          # For local testing, we replace this with our local image tag.
           image: IMAGE_TAG_PLACEHOLDER
-
-          # IfNotPresent ensures Kubernetes uses the image pre-loaded into the cluster
-          # (e.g. via 'minikube image load' or 'kind load docker-image').
           imagePullPolicy: IfNotPresent
-
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           ports:
-            # Port where Gunicorn is listening inside the container
             - containerPort: 8080
               name: http
-
-          env:
-            # Application version label displayed on the root endpoint "/"
-            - name: APP_VERSION
-              value: "v1"
-
-          # Kubernetes probes: The gatekeepers of Continuous Deployment
+          lifecycle:
+            preStop:
+              exec:
+                command: [python, -c, "import time; time.sleep(5)"]
+          startupProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
-            # Sends an HTTP GET request to /health every 3 seconds.
-            # Kubernetes will ONLY add this pod to the Service's active endpoints
-            # if this returns HTTP 200.
             httpGet:
               path: /health
-              port: 8080
-            initialDelaySeconds: 3   # Wait 3s after container start before probing
-            periodSeconds: 3         # Probe every 3s
-            timeoutSeconds: 2        # Fail if no response within 2s
-            failureThreshold: 3      # Mark unhealthy after 3 consecutive failures
-            successThreshold: 1      # Mark ready after 1 success
-
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 1
           livenessProbe:
-            # If the application deadlocks or crashes, liveness probe restarts it.
             httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
+              path: /live
+              port: http
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
-
-          # Resource governance: prevents resource starvation across the cluster
           resources:
             requests:
-              cpu: "50m"       # 50 millicores (0.05 CPU)
-              memory: "64Mi"   # 64 Megabytes
+              cpu: 50m
+              memory: 64Mi
             limits:
-              cpu: "200m"      # 200 millicores (0.2 CPU)
-              memory: "128Mi"  # 128 Megabytes
+              cpu: 500m
+              memory: 128Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 32Mi

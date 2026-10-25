@@ -1,36 +1,13 @@
-# ==============================================================================
-# Kubernetes Service Manifest: app-service
-# ==============================================================================
-# Purpose: Provides a stable network IP, DNS name, and load balancing across
-#          all healthy pods managed by 'app-deployment'.
-#
-# Key Concepts:
-# 1. Selector: Matches 'app: demo-app' to automatically register and deregister pods.
-# 2. Readiness Integration: A pod is ONLY included in the service's endpoint list
-#    after its readinessProbe succeeds. Unready pods receive ZERO traffic!
-# 3. Type NodePort: Allows external access via <NodeIP>:<NodePort> (30080) for
-#    local testing, while also acting as a ClusterIP on internal port 80.
-# ==============================================================================
-
 apiVersion: v1
 kind: Service
 metadata:
   name: app-service
-  labels:
-    app: demo-app
 spec:
   type: NodePort
-
-  # Directs traffic to pods bearing the label 'app: demo-app'
   selector:
     app: demo-app
-
   ports:
     - name: http
-      # Port exposed inside the Kubernetes cluster
       port: 80
-      # Target port on the container where Gunicorn is listening
-      targetPort: 8080
-      # Fixed port accessible on the Minikube/Node IP from the host
+      targetPort: http
       nodePort: 30080
-      protocol: TCP

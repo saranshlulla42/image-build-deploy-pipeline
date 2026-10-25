@@ -1,0 +1,13 @@
+.venv/
+.tools/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+artifacts/
+build-info.json
+.env
+.env.*
+*.kubeconfig
+kubeconfig*
+*.tfstate*
+*.tfplan

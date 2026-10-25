@@ -1,144 +1,112 @@
-# Automated Image Build and Deployment Pipeline
+# Automated image build and deployment pipeline
 
-A complete university group project demonstrating modern, zero-downtime **Continuous Deployment** using Docker, Kubernetes (Minikube / kind), and GitHub Actions.
+A course project that tests a Flask service, builds a Docker image once, scans it, exercises Kubernetes releases and recovery, then publishes the exact tested image to GHCR.
 
----
+**Current scope:** local Kubernetes integration is runnable without a cloud account. Persistent cloud deployment is implemented as a gated workflow job and remains unconfigured until a cluster and credentials are supplied. A green local test is not proof of a persistent cloud deployment.
 
-## 1. Project Overview
+## What happens on a change?
 
-In this pipeline, **a Git push to the `main` branch is the ONLY manual action.** 
+```text
+pull request -> application/failure tests -> build -> container smoke test
+             -> vulnerability scan -> real kind rollout/recovery tests
 
-Once code is pushed:
-1. GitHub Actions automatically builds the Docker image.
-2. The image is tagged with the exact **Git commit SHA** (never `"latest"`) for 100% traceability.
-3. The image is published to GitHub Container Registry (`ghcr.io`).
-4. An ephemeral Kubernetes cluster (`kind`) deploys the updated image using a zero-downtime `RollingUpdate` strategy.
-5. The Kubernetes `readinessProbe` serves as the **only quality gate**:
-   - If `/health` returns HTTP 200: Traffic shifts and the pipeline turns green.
-   - If `/health` fails: The rollout stalls, `kubectl rollout status` times out, the CI job fails, and old pods continue serving live traffic uninterrupted.
-
----
-
-## 2. Repository Structure
-
-```
-├── .github/
-│   └── workflows/
-│       └── pipeline.yml          # GitHub Actions CI/CD workflow (Build, Tag, GHCR, kind deploy, Smoke test)
-├── app/
-│   ├── app.py                    # Flask application with "/" and "/health" endpoints
-│   └── requirements.txt          # Python dependencies (Flask, Gunicorn)
-├── docs/
-│   ├── EXPLAINED.md              # Beginner explanations: SHA tagging, CD concepts, secret safety
-│   └── RESULTS.md                # Benchmarks and experimental results table
-├── k8s/
-│   ├── deployment.yaml           # 2 replicas, RollingUpdate (maxUnavailable: 0, maxSurge: 1), health probes
-│   └── service.yaml              # NodePort/ClusterIP service exposing port 80 -> container port 8080
-├── scripts/
-│   ├── failure_demo.sh           # Demonstrates failed release isolation while old pods continue serving
-│   ├── manual_deploy.sh          # Baseline: times manual build, tag, cluster load, and deployment
-│   ├── measure_build.sh          # Benchmarks Cold Build (--no-cache) vs. Warm-Cache Build
-│   ├── rollback_timing.sh        # Measures speed of automated rollback (kubectl rollout undo)
-│   └── zero_downtime_test.sh     # Sends continuous traffic (10 req/s) during rollout; asserts 0 failures
-├── .dockerignore                 # Excludes unnecessary files from container build context
-├── Dockerfile                    # Multi-layer slim Python image, non-root user, Gunicorn server
-└── README.md                     # Complete project documentation and execution guide
+main -> all checks above -> transfer tested image -> publish to GHCR by unique tag
+     -> record image digest
+     -> persistent deployment, if explicitly enabled
+     -> otherwise report "cloud deployment not configured"
 ```
 
----
+The release command checks readiness and the source version embedded in the image. On failure it restores the previous Deployment spec and verifies recovery. A failed attempted release still exits nonzero after a successful rollback.
 
-## 3. Running Locally on Minikube
+## Run the project locally
 
-You can run and test every phase of this pipeline right on your local machine using Minikube and Bash.
+Use macOS/Linux or a Linux shell with Docker, Python 3.12+, kubectl and kind. Docker must be running. The kind demo uses a dedicated cluster named `pipeline-demo` and localhost port 30080; it does not deploy into your current kubectl context.
 
-### Prerequisites
-Make sure your tools are running:
 ```bash
-docker --version
-minikube status
-kubectl cluster-info
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements-dev.txt
+python -m pytest --junitxml=artifacts/unit-tests.xml
+bash scripts/local_demo.sh
 ```
 
-### Step 1: Run the Automated Measurement Scripts
+The local helper requires application/container changes to be committed so the embedded source commit identifies real source history. It creates its own cluster, builds the image, then demonstrates:
 
-All scripts are located in `/scripts` and are fully automated:
+1. Initial verified deployment.
+2. Rolling update while sampling traffic through a NodePort.
+3. A deliberately unhealthy candidate, automatic restoration, and continued traffic sampling.
+4. A healthy HTTP response with an unexpected source version, which is rejected.
+5. First-deployment failure with no false claim of rollback.
 
-#### 1. Measure Docker Layer Caching Speedup
-Compares how long it takes to build from scratch versus reusing cached layers:
+The update image is a second local tag for the same built artifact; this deliberately exercises rollout mechanics without inventing a second source commit. The wrong-version scenario deliberately requests a nonmatching identity to test rejection.
+
+After the demo, open:
+
+- Application: http://127.0.0.1:30080/
+- Embedded source version: http://127.0.0.1:30080/version
+- Readiness: http://127.0.0.1:30080/health
+
+The cluster stays running locally until you remove it. This does not make it a cloud service.
+
+## Run individual checks
+
 ```bash
+# Replace these values with your actual demo context/image/commit.
+python scripts/release.py --context kind-pipeline-demo --namespace image-pipeline \
+  --image demo-app:FULL_COMMIT --expected-version FULL_COMMIT --allow-local-image
+
+# Sample a stable Service/NodePort URL throughout a command; never port-forward a pod.
+python scripts/traffic_probe.py --url http://127.0.0.1:30080 \
+  --output artifacts/traffic.json -- YOUR_RELEASE_COMMAND
+
+# Scan locally with Trivy 0.76.1, then evaluate the full report.
+trivy image --scanners vuln --format json --output artifacts/trivy-full.json demo-app:FULL_COMMIT
+python scripts/security_gate.py --report artifacts/trivy-full.json
+
+# Optional benchmark: three builds with layer caching disabled and three warm builds.
 bash scripts/measure_build.sh
 ```
 
-#### 2. Run the Baseline Manual Deployment
-Times a complete manual build, image load into Minikube, and deployment:
-```bash
-bash scripts/manual_deploy.sh
-```
+The scan policy blocks fixable HIGH/CRITICAL findings. Unfixed HIGH/CRITICAL findings remain visible in the decision report. A missing/malformed scan or scanner execution failure blocks the pipeline. This policy does not certify an image as vulnerability-free.
 
-#### 3. Test Zero-Downtime Rolling Updates
-Sends continuous HTTP traffic (~10 requests/second) while triggering a rolling update, proving **0 dropped requests**:
-```bash
-bash scripts/zero_downtime_test.sh
-```
+## GitHub setup
 
-#### 4. Demonstrate Failure Protection (Broken Release Simulation)
-Deploys a deliberately broken container (where `/health` returns HTTP 500), showing that:
-- The new pod fails the readiness probe.
-- The rollout stalls and times out.
-- Existing old pods continue serving 100% of user traffic without interruption.
-- Automatically rolls back to restore healthy cluster state.
-```bash
-bash scripts/failure_demo.sh
-```
+1. Push this code to a repository you control; open a pull request to run validation.
+2. The workflow already declares scoped token permissions. No personal token or permission to approve pull requests is required for publishing.
+3. Merge into `main` to validate and publish the tested artifact.
+4. GHCR package visibility is independent of repository visibility. For the supplied persistent workflow, explicitly make the image package public. It checks anonymous access before deployment.
+5. Open the Actions run and download `validation-evidence` for test reports, scan findings, rollout results and traffic measurements.
+6. Follow [persistent deployment setup](docs/CLOUD_SETUP.md) only when you have a cloud account/cluster.
 
-#### 5. Measure Rollback Timing
-Measures the duration of an automated rollback (`kubectl rollout undo`) to verify it takes under 30 seconds:
-```bash
-bash scripts/rollback_timing.sh
-```
+An amd64 image is built in GitHub. The target cluster must support amd64. Local images use the local Docker architecture.
 
----
+## Repository map
 
-## 4. How to Connect to GitHub & Run the Pipeline
+- `app/`: Flask application and hash-locked runtime dependencies.
+- `tests/`: application, release failure-path, scan-policy and traffic-check tests.
+- `scripts/release.py`: explicit-target deployment, namespace lock, verification and recovery.
+- `scripts/verify_release.py`: readiness plus artifact identity check.
+- `scripts/traffic_probe.py`: full-command traffic sampling with truthful exit codes.
+- `scripts/integration_demo.py`: actual Kubernetes experiment orchestration.
+- `k8s/`: Deployment, Service, local kind configuration and optional cloud bootstrap RBAC.
+- `.github/workflows/pipeline.yml`: validation, publish and optional persistent release.
+- `docs/`: explanations, measured results, cloud setup and demonstration instructions.
 
-Follow these exact steps to push this project to your own GitHub account and let GitHub Actions run the pipeline:
+## Limitations
 
-### Step 1: Create a New GitHub Repository
-1. Open [GitHub](https://github.com/new).
-2. Name your repository (e.g., `image-build-deploy-pipeline`).
-3. Choose **Public** (recommended so GHCR container packages are visible).
-4. Do **not** initialize with a README, .gitignore, or license (we already have them).
-5. Click **Create repository**.
+- Two pods on one local node do not provide protection against node failure.
+- Rolling updates aim to reduce interruption; zero failures in a measured sample is not a universal zero-downtime guarantee.
+- There is one application and one deployment environment, with no database/migration rollback.
+- The namespace must be dedicated to this project; the release tool refuses to overwrite a deployment without its verified state record.
+- A ConfigMap lock serializes releases. An interrupted runner can leave a lock; inspect the environment before removing it. See the cloud guide.
+- Snapshot rollback restores the Deployment spec, not Service/IAM/network changes or a deleted image.
+- Runtime and base-image dependencies are pinned; upgrades require refreshing locks/digests, rescanning and retesting.
+- The cloud job has not run until credentials and an actual persistent cluster are configured.
 
-### Step 2: Configure Package Permissions in GitHub Actions
-To allow the pipeline to write images to GitHub Container Registry (GHCR):
-1. In your GitHub repository, go to **Settings** > **Actions** > **General**.
-2. Scroll down to **Workflow permissions**.
-3. Select **Read and write permissions**.
-4. Check the box **Allow GitHub Actions to create and approve pull requests**.
-5. Click **Save**.
-
-### Step 3: Commit and Push Your Code
-Open your terminal in this directory and run:
+## Cleanup
 
 ```bash
-# Add all files to git tracking
-git add .
-
-# Create the initial commit
-git commit -m "feat: complete automated image build and deployment pipeline"
-
-# Link your local repository to your GitHub repository
-# Replace YOUR_USERNAME with your GitHub username:
-git remote add origin https://github.com/YOUR_USERNAME/image-build-deploy-pipeline.git
-
-# Push your code to the main branch
-git push -u origin main
+kind delete cluster --name pipeline-demo
 ```
 
-### Step 4: Watch the Pipeline Execute
-1. Go to your GitHub repository and click the **Actions** tab.
-2. You will see **Automated Build & Deploy Pipeline** running.
-3. Click into the run to watch:
-   - **Job 1 (`build-and-push`)**: Logs in to GHCR, builds with Docker Buildx, tags with your commit SHA, and pushes to `ghcr.io`.
-   - **Job 2 (`deploy`)**: Creates a `kind` cluster inside the CI runner, pulls and preloads the SHA image, applies the manifests with `sed`, enforces `kubectl rollout status --timeout=60s`, and executes the live smoke test via `curl`.
+This removes only the named local demo cluster. Cloud resources require separate teardown in your provider account; stopping a VM can leave billable disks/IPs. Preserve experimental evidence first.

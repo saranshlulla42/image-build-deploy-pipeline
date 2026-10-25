@@ -1,88 +1,51 @@
-# Core DevOps Concepts Explained
+# How the project works
 
-Welcome to the project conceptual guide! This document explains the core engineering decisions behind our pipeline in plain English.
+## Container image, tag and digest
 
----
+An image packages the application and its runtime. A tag is a name for an image and can be reassigned, even if the name contains a Git commit. A registry digest identifies the published content.
 
-## 1. Why Git Commit SHA Tags Instead of `latest`?
+The build writes the actual source commit into `/app/build-info.json`. The app reads that file; changing `APP_VERSION` cannot pretend to deploy another source version. Local unbuilt source explicitly reports `development`.
 
-In Docker, the `:latest` tag is a mutable pointer. It simply points to the most recent image built on a machine. Using `:latest` in production environments is considered an anti-pattern for several crucial reasons:
+In GitHub, a candidate is built once, tested and scanned. Its Docker archive is transferred to the publish job, which pushes it without another build. A unique tag includes the commit, run and attempt. Persistent releases consume the resolved `ghcr.io/...@sha256:...` reference.
 
-### A. Traceability (The Main Reason)
-- When a pod in production reports an error or crash, tagging with the **Git commit SHA** (e.g. `ghcr.io/user/repo:7c9e12a...`) tells engineers the exact commit that produced that container.
-- You can run `git checkout 7c9e12a` and immediately see the exact lines of code, commit message, author, and pull request.
-- With `:latest`, nobody knows which commit is actually running on the cluster.
+Docker and dependency pins improve repeatability, but do not by themselves guarantee bit-for-bit reproducible builds. The runtime dependencies are locked with hashes and the base image is pinned by digest.
 
-### B. Traceability vs. Reproducibility
-It is important to understand the technical difference between these two concepts:
-- **Traceability:** Being able to look at any running artifact and trace it directly back to its source code and author. Commit SHA tagging provides 100% traceability.
-- **Reproducibility:** Being able to rebuild an image years later and produce the exact same binary output bit-for-bit. To achieve true reproducibility, an organization must pin base image digests (e.g. `python@sha256:...`), pin dependency versions down to their hashes, and lock compiler versions. SHA tags give us *traceability*, not automatic bit-for-bit reproducibility.
+## CI versus persistent deployment
 
-### C. Kubernetes Caching Hazards with `:latest`
-- If you push a new image with `:latest`, Kubernetes may see that it already has an image named `:latest` cached on the node and skip pulling the new image!
-- With immutable commit SHAs, the tag changes on every commit, forcing Kubernetes to pull and run the new version without ambiguity.
+Pull requests run application tests, image checks and a temporary kind cluster test. That cluster is an integration-test environment. It disappears after the job.
 
----
+Merges to main additionally publish the image. The optional persistent job updates an existing cluster instead of creating a new one. Until that job is configured, the project has verified integration and publishing, but no persistent cloud application.
 
-## 2. Continuous Delivery vs. Continuous Deployment
+## Readiness, liveness and rollout
 
-Many people use the terms "CD" interchangeably, but there is a major architectural difference:
+Readiness `/health` controls whether a pod is eligible for Service traffic. Liveness `/live` checks whether the process responds. A demo readiness failure therefore does not create a liveness restart loop.
 
-```
-                  ┌──────────────────────┐
-                  │ Continuous Delivery  │
-                  └──────────┬───────────┘
-                             │
-     [Build] ──> [Test] ──> [Deploy to Staging] ──> [HUMAN APPROVAL GATE] ──> [Deploy to Prod]
-                                                            │
-                                                            ▼ (Manual Click)
+The Deployment uses two replicas, no planned unavailable replicas during rolling update, one extra pod, a short readiness-stabilization period, graceful shutdown and a five-second drain delay. These choices reduce planned interruption; network behavior and node failures can still cause request loss.
 
-                  ┌────────────────────────┐
-                  │ Continuous Deployment  │
-                  └──────────┬─────────────┘
-                             │
-     [Build] ──> [Test] ──> [Deploy to Prod] ──> [AUTOMATED QUALITY GATE]
-                                                        │
-                                                        ▼ (ReadinessProbe: /health)
-```
+A rollout timeout only reports failure. Kubernetes does not automatically undo the rollout for this project. Our release command restores the saved previous Deployment spec, waits for it, then checks the Service's expected source version.
 
-| Concept | Human Approval Required? | How Code Reaches Production |
-| :--- | :---: | :--- |
-| **Continuous Delivery** | **Yes** | The pipeline automatically builds and tests code, but a human engineer must click "Approve" or trigger a release to deploy to production. |
-| **Continuous Deployment** | **No** | **Every commit pushed to the main branch is deployed to production automatically.** The only safety gates are automated tests and Kubernetes readiness probes. |
+## Recovery states
 
-### Our Pipeline Architecture: Continuous DEPLOYMENT
-In this project, our pipeline implements **Continuous Deployment**:
-1. A developer pushes to `main` (the **ONLY** manual step).
-2. The pipeline automatically builds and publishes the image.
-3. The pipeline deploys to the Kubernetes cluster.
-4. **The automated gate:** Kubernetes executes `readinessProbe` on `/health` and monitors `kubectl rollout status --timeout=60s`.
-   - If `/health` passes: traffic smoothly shifts to the new pods.
-   - If `/health` fails: rollout stalls, the CI job fails, and old pods keep serving traffic without human intervention.
+- `succeeded`: rollout and Service verification passed; the verified state was recorded.
+- `failed_preflight`: credentials, lock, drift or baseline checks failed before a candidate deployment.
+- `failed_rolled_back`: the candidate failed; the prior release was restored and verified. Exit code remains 1.
+- `failed_first_deployment`: there was no previous release; the failed candidate was removed. Exit code 1.
+- `failed_recovery`: restoration could not be verified. Exit code 2 and human intervention is needed.
 
----
+The release ConfigMap records the last verified image/version. A separate ConfigMap provides an atomic, namespace-scoped lock to prevent overlapping manual and CI release commands. Both require inspection after a runner is abruptly interrupted.
 
-## 3. Handling Secrets & Credentials Securely
+## Evidence and traffic measurements
 
-Security is paramount in CI/CD pipelines. A single leaked credential can compromise an entire cloud infrastructure.
+Port-forwarding a Service chooses a pod behind it. When that pod exits, the forward can break independently of Service availability. Our measurement uses the stable NodePort and runs until the release command completes, plus a final observation interval.
 
-### The Golden Rule: Never Hardcode Secrets
-- **Never put passwords, tokens, API keys, or private keys into source code, Dockerfiles, or Kubernetes manifests.**
-- If you put a secret into a `Dockerfile`, it gets baked into the image layers. Anyone who pulls the image or runs `docker history` can inspect and steal the secret!
-- If you commit secrets to Git, they remain forever in the Git history even if you delete them in a later commit.
+The measurement records request count, failures, observed versions, elapsed duration and actual request rate. A failed request or unexpected command exit makes the measurement fail. A controlled failed release expects exit 1, while recovery failure exit 2 is never accepted as successful demonstration.
 
-### How We Handle Secrets Securely in This Project
-1. **GitHub Automatic `GITHUB_TOKEN`:**
-   - Instead of creating a personal access token (PAT) with broad permissions, our pipeline uses GitHub's built-in `GITHUB_TOKEN`.
-   - It is created dynamically when the workflow starts, expires immediately when the workflow finishes, and is scoped strictly to the current repository.
-2. **Principle of Least Privilege:**
-   - We explicitly declare permissions in the workflow:
-     ```yaml
-     permissions:
-       contents: read
-       packages: write
-     ```
-   - The token can only read code and write packages to GHCR; it cannot alter organization settings, delete repos, or access unrelated repositories.
-3. **Secret Separation in Kubernetes:**
-   - In production, sensitive variables (database passwords, API tokens) are injected at runtime via **Kubernetes Secrets** or external secret vaults (such as HashiCorp Vault, AWS Secrets Manager, or Azure Key Vault).
-   - The application receives secrets through mounted volumes or environment variables, keeping container images completely generic and reusable across environments (Dev, Staging, Prod).
+Scan-policy fixture tests simulate findings; they are not evidence of a scanner discovering a real vulnerability. Actual scan JSON is retained separately.
+
+## Official references
+
+- [Docker test-before-push](https://docs.docker.com/build/ci/github-actions/test-before-push/)
+- [Kubernetes Deployments and failed rollouts](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+- [kubectl port-forward behavior](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_port-forward/)
+- [Trivy vulnerability scanning](https://trivy.dev/latest/docs/guide/scanner/vulnerability/)
+- [GHCR package visibility](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)

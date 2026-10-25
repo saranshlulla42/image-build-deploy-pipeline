@@ -1,31 +1,17 @@
-# ==============================================================================
-# .dockerignore: Exclude unnecessary files from the Docker build context
-# ==============================================================================
-# Benefits:
-# 1. Speeds up build time by sending a much smaller context to the Docker daemon.
-# 2. Prevents sensitive or unneeded files (like git history or docs) from leaking
-#    into the container image.
-# ==============================================================================
-
-# Git metadata
-.git/
-.gitignore
-
-# Python bytecode and temporary caches
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.pytest_cache/
-
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Project documentation & scripts (not required inside the container image)
-/docs/
-/k8s/
-/scripts/
-/.github/
+.git
+.github
+.venv
+.tools
+.pytest_cache
+__pycache__
+**/__pycache__
+.env
+.env.*
+*.kubeconfig
+kubeconfig*
+artifacts
+docs
+tests
+scripts
+k8s
 README.md

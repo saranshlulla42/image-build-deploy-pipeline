@@ -1,51 +1,13 @@
-# ==============================================================================
-# Dockerfile: Automated Image Build & Deployment Pipeline
-# ==============================================================================
-# Best Practices Implemented:
-# 1. Base Image: python:3.12-slim (minimal attack surface, small image size ~150MB)
-# 2. Layer Caching: requirements.txt is copied and installed BEFORE app code so
-#    Docker reuses the cached dependency layer if only code changes.
-# 3. Security: Creates and switches to a non-root user ('appuser') with least privilege.
-# 4. Production Server: Uses Gunicorn WSGI server instead of Flask's built-in dev server.
-# ==============================================================================
-
-# Step 1: Use an official lightweight Python runtime
-FROM python:3.12-slim
-
-# Step 2: Set environment variables
-# - PYTHONDONTWRITEBYTECODE: Prevents Python from writing .pyc files to disk
-# - PYTHONUNBUFFERED: Ensures standard output/error logs are flushed immediately to stdout/stderr
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    APP_VERSION=v1
-
-# Step 3: Set working directory inside the container
+FROM python:3.12-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
+ARG SOURCE_COMMIT
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
-
-# Step 4: Create a dedicated non-root user and group for security
-# Running containers as root is a major security risk; this ensures least privilege.
-RUN groupadd -r appgroup && useradd -r -g appgroup -u 1000 appuser
-
-# Step 5: Copy and install Python dependencies FIRST (Docker layer caching optimization)
-# Because dependencies change infrequently, Docker will cache this layer.
-# Code edits will NOT trigger a slow reinstall of packages!
-COPY app/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Step 6: Copy the application source code into the container
-COPY app/ /app/
-
-# Step 7: Change ownership of the app directory to our non-root user
-RUN chown -R appuser:appgroup /app
-
-# Step 8: Switch to the non-root user
-USER appuser
-
-# Step 9: Document the port the container listens on
+RUN groupadd --system appgroup && useradd --system --gid appgroup --uid 1000 appuser
+COPY app/requirements.txt requirements.txt
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
+COPY app/ ./
+RUN python -c 'import json,re,sys; commit=sys.argv[1]; assert re.fullmatch("[0-9a-f]{40}",commit), "SOURCE_COMMIT must be a full Git SHA"; open("build-info.json","w").write(json.dumps({"commit":commit}))' "$SOURCE_COMMIT"
+LABEL org.opencontainers.image.revision=$SOURCE_COMMIT
+USER 1000:1000
 EXPOSE 8080
-
-# Step 10: Run the application with Gunicorn
-# - --bind 0.0.0.0:8080: Listens on all interfaces on port 8080
-# - --workers 2: Number of worker processes to handle concurrent requests
-# - app:app: Tells Gunicorn to look in app.py for the 'app' Flask instance
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--graceful-timeout", "20", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
