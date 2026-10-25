@@ -2,6 +2,8 @@
 
 A course project that tests a Flask service, builds a Docker image once, scans it, exercises Kubernetes releases and recovery, then publishes the exact tested image to GHCR.
 
+This project extends the [original starter repository](https://github.com/2023ninadhatwalne-lab/image-build-deploy-pipeline), starting from commit `14bf9293bb133e03b58bfe816cc5e37e37a95c7f`. The verified-release engine, failure-path experiments, artifact-bound scan policy, build-once publishing workflow, and Azure integration are subsequent improvements. Credit the starter and disclose coding-agent assistance according to your course's submission rules.
+
 Local Kubernetes integration runs without a cloud account. The persistent Azure option adds Bicep infrastructure, a private Kubernetes management API, temporary GitHub OIDC sign-in, and public application verification. See [Azure setup](docs/AZURE_SETUP.md) for prerequisites, permissions and costs; enable its gated workflow only after the VM is ready. A green local test alone is not evidence of a cloud deployment.
 
 ## What happens on a change?

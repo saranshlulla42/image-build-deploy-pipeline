@@ -6,7 +6,7 @@ Environment: macOS arm64 Docker host, Linux arm64 application container, one loc
 
 | Check | Observed result |
 |---|---|
-| Application, release, scan-policy and traffic tests | 38 tests; 0 failures; 0 errors |
+| Application, release, scan-policy and traffic tests | 47 tests; 0 failures; 0 errors (latest unit suite; earlier local integration measurements retained below) |
 | Initial verified release | succeeded; 8.596 s |
 | Rolling update | succeeded; 16.782 s |
 | Rolling-update traffic | 175 requests; 0 failures; 17.935 s; 9.76 req/s |
@@ -20,9 +20,9 @@ Environment: macOS arm64 Docker host, Linux arm64 application container, one loc
 | Image size | 213129866 bytes (203.26 MiB reported by Docker) |
 | Actual vulnerability scan | 170 package findings: HIGH=44, LOW=62, MEDIUM=63, UNKNOWN=1 |
 | Security policy | 0 fixable HIGH/CRITICAL blocked findings; 44 unfixed HIGH/CRITICAL package findings retained |
-| Persistent cloud deployment | Not configured; no cloud account supplied |
-| Updated GitHub workflow execution | Not executed remotely; local actionlint validation passed |
-| GHCR publishing of updated code | Not performed from this workspace |
+| Persistent cloud deployment | Azure account connected; replacement region deployment awaiting approval |
+| Updated GitHub workflow execution | Remote runs 40189592572 and 40190881842 passed; Azure deployment job remained gated |
+| GHCR publishing of updated code | Tested amd64 images published to public GHCR by GitHub Actions |
 
 Five-scenario integration artifact source: `27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6`. Latest built artifact source: `b2a0fbdee683813bfded6626cde0fb333933fa2d`.
 
@@ -39,7 +39,7 @@ Recovery time starts after failure detection; it excludes the time spent waiting
 
 Security policy permits unfixed HIGH/CRITICAL findings while reporting them. The image is not vulnerability-free; findings are package-level occurrences and can repeat the same vulnerability across packages. No intentionally vulnerable image was deployed to demonstrate the policy. Fixture tests simulate rejection separately.
 
-No cold/warm-cache comparison, cloud uptime measurement, provider bill, or new remote Actions run is claimed. Earlier inconsistent benchmark figures have been replaced by these retained measurements.
+No cold/warm-cache comparison, cloud uptime measurement, provider bill, is claimed. Two remote Actions runs passed validation and publishing. Earlier inconsistent benchmark figures have been replaced by these retained measurements.
 
 ## Retained evidence
 

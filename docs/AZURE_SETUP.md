@@ -10,17 +10,17 @@ On each release, a namespace-scoped Kubernetes token is minted on the VM for 30 
 
 ## Provision
 
-Inspect `infra/azure/main.bicep` and `bootstrap.sh` first. Confirm credit balance, allowed-region policy, SKU availability, and quota. The selected assessment configuration is B2als v2 in Malaysia West, with a 32 GB Standard SSD and a Standard static public IP.
+Inspect `infra/azure/main.bicep` and `bootstrap.sh` first. Confirm credit balance, allowed-region policy, SKU availability, and quota. The selected assessment configuration is B2als v2 in Korea Central, with a 32 GB Standard SSD and a Standard static public IP.
 
 Using Azure CLI and Bicep:
 
 ```bash
 az login
 az account show
-az group create --name rg-image-pipeline-demo --location malaysiawest
+az group create --name rg-image-pipeline-demo-kr --location koreacentral
 # Generate and retain a local SSH key. Supply only its public half below.
 # GitHub IDs can be read with: gh api repos/OWNER/REPOSITORY
-az deployment group what-if --resource-group rg-image-pipeline-demo \
+az deployment group what-if --resource-group rg-image-pipeline-demo-kr \
   --template-file infra/azure/main.bicep \
   --parameters sshPublicKey="$(cat YOUR_PUBLIC_KEY.pub)" \
     githubSubject='repo:OWNER@OWNER_ID/REPOSITORY@REPOSITORY_ID:environment:demo'
@@ -42,7 +42,7 @@ Create environment `demo`, permitting `main` only. Populate its variables from t
 | `AZURE_CLIENT_ID` | `githubClientId` output |
 | `AZURE_TENANT_ID` | `tenantId` output |
 | `AZURE_SUBSCRIPTION_ID` | `subscriptionId` output |
-| `AZURE_RESOURCE_GROUP` | `rg-image-pipeline-demo` |
+| `AZURE_RESOURCE_GROUP` | `rg-image-pipeline-demo-kr` |
 | `AZURE_VM_NAME` | `image-pipeline-vm` |
 | `DEMO_URL` | `publicUrl` output |
 
@@ -60,24 +60,22 @@ If a release is interrupted, inspect pod images, Deployment status, `pipeline-re
 
 ## Costs, starting, stopping, and cleanup
 
-Retail USD rates checked October 25, 2026: VM $0.0428/hour allocated; Standard IPv4 $0.005/hour retained; 32 GB E4 LRS disk $2.40/month; disk operations $0.002 per 10,000. Roughly $1.23/day continuously running, or $37.30/730-hour month, before operations, transfer, tax and conversion. This is an estimate, not a cap. Credit expiry and subscription spending limits are controlled by Azure.
+Retail USD rates checked October 25, 2026: VM $0.0468/hour allocated; Standard IPv4 $0.005/hour retained; 32 GB E4 LRS disk $2.40/month; disk operations $0.002 per 10,000. Roughly $1.32/day continuously running, or $40.21/730-hour month, before operations, transfer, tax and conversion. This is an estimate, not a cap. Credit expiry and subscription spending limits are controlled by Azure.
 
-Daily automatic shutdown is configured at **23:00 India Standard Time**. There is no automatic startup. Before an assessment:
-
-The scheduler resource is hosted in Korea Central because DevTestLab schedules are unavailable in Malaysia West. It references the Malaysia West VM by its resource ID; the VM and its data stay in Malaysia West.
+Daily automatic shutdown is configured at **23:00 India Standard Time**. The VM and scheduler both run in Korea Central. There is no automatic startup. Before an assessment:
 
 ```bash
-az vm start --resource-group rg-image-pipeline-demo --name image-pipeline-vm
+az vm start --resource-group rg-image-pipeline-demo-kr --name image-pipeline-vm
 # Verify /health and /version before presenting.
 ```
 
 Between sessions, release compute allocation:
 
 ```bash
-az vm deallocate --resource-group rg-image-pipeline-demo --name image-pipeline-vm
+az vm deallocate --resource-group rg-image-pipeline-demo-kr --name image-pipeline-vm
 ```
 
-Disk and public IP charges continue while stopped. To remove the assessment after saving evidence, first set GitHub `PERSISTENT_DEPLOY_ENABLED=false`, then delete only the dedicated `rg-image-pipeline-demo` resource group. This destroys its VM, disk, IP, network and identity. Check for a retained custom role definition afterward. Do not delete resources needed for an upcoming assessment.
+Disk and public IP charges continue while stopped. To remove the assessment after saving evidence, first set GitHub `PERSISTENT_DEPLOY_ENABLED=false`, then delete only the dedicated `rg-image-pipeline-demo-kr` resource group. This destroys its VM, disk, IP, network and identity. Check for a retained custom role definition afterward. Do not delete resources needed for an upcoming assessment.
 
 ## References
 
