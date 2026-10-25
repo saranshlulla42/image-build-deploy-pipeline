@@ -10,11 +10,11 @@ if ! kind get clusters | tr -d '\r' | grep -qx pipeline-demo; then
     --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --wait 120s
 fi
 SOURCE_COMMIT=$(git rev-parse HEAD)
-if ! git diff --quiet HEAD -- app Dockerfile; then
+if [ -n "$(git status --porcelain --untracked-files=all -- app Dockerfile)" ]; then
   echo "Commit application/container changes before building a traceable release." >&2
   exit 1
 fi
-docker build --build-arg "SOURCE_COMMIT=$SOURCE_COMMIT" -t "demo-app:$SOURCE_COMMIT" .
+docker build --provenance=false --build-arg "SOURCE_COMMIT=$SOURCE_COMMIT" -t "demo-app:$SOURCE_COMMIT" .
 python3 scripts/container_smoke.py --image "demo-app:$SOURCE_COMMIT" --expected-version "$SOURCE_COMMIT"
 python3 scripts/integration_demo.py --context kind-pipeline-demo \
   --image "demo-app:$SOURCE_COMMIT" --version "$SOURCE_COMMIT"

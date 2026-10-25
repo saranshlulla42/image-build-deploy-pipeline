@@ -32,3 +32,9 @@ def test_verification_never_ignores_unreachable_service(monkeypatch):
     monkeypatch.setattr(verify_release, "request_json", Mock(side_effect=OSError("offline")))
     with pytest.raises(RuntimeError, match="offline"):
         verify_release.verify("http://service", "new", timeout=0)
+
+
+def test_malformed_success_response_is_not_verified(monkeypatch):
+    monkeypatch.setattr(verify_release, "request_json", Mock(side_effect=[[], {}]))
+    with pytest.raises(RuntimeError, match="JSON objects"):
+        verify_release.verify("http://service", "new", timeout=0)

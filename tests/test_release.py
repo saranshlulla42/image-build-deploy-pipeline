@@ -125,3 +125,37 @@ def test_concurrent_release_cannot_take_lock_or_modify_state():
     assert code == 1 and report["outcome"] == "failed_preflight"
     assert kube.get("configmap", LOCK)["data"]["owner"] == "another-release"
     assert not any(event[0] == "apply" for event in kube.events)
+
+
+def test_api_response_loss_after_candidate_write_still_restores_previous_spec():
+    class LostResponse(FakeKube):
+        def apply(self, document):
+            super().apply(document)
+            if document["kind"] == "Deployment":
+                raise ReleaseError("API response lost after accepted write")
+    kube = LostResponse()
+    original = kube.get("deployment", DEPLOYMENT)["spec"]
+    code, report = deploy(kube, NEW_IMAGE, NEW_VERSION)
+    assert code == 1 and report["outcome"] == "failed_rolled_back"
+    assert kube.get("deployment", DEPLOYMENT)["spec"] == original
+
+
+def test_record_write_failure_does_not_leave_unrecorded_candidate_running():
+    class FailedRecord(FakeKube):
+        fail_once = True
+        def apply(self, document):
+            super().apply(document)
+            if document["kind"] == "ConfigMap" and self.fail_once:
+                self.fail_once = False
+                raise ReleaseError("Record write response lost")
+    kube = FailedRecord()
+    code, report = deploy(kube, NEW_IMAGE, NEW_VERSION)
+    assert code == 1 and report["outcome"] == "failed_rolled_back"
+    assert kube.get("configmap", STATE)["data"]["image"] == OLD_IMAGE
+
+
+def test_first_release_records_success_without_inventing_previous_release():
+    kube = FakeKube(existing=False)
+    code, report = deploy(kube, NEW_IMAGE, NEW_VERSION)
+    assert code == 0 and report["outcome"] == "succeeded"
+    assert "previous_image" not in kube.get("configmap", STATE)["data"]

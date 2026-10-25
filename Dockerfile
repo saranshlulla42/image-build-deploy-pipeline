@@ -10,4 +10,4 @@ RUN python -c 'import json,re,sys; commit=sys.argv[1]; assert re.fullmatch("[0-9
 LABEL org.opencontainers.image.revision=$SOURCE_COMMIT
 USER 1000:1000
 EXPOSE 8080
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--graceful-timeout", "20", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+CMD ["gunicorn", "--no-control-socket", "--bind", "0.0.0.0:8080", "--workers", "2", "--graceful-timeout", "20", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

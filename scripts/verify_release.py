@@ -20,6 +20,8 @@ def verify(base_url, expected, timeout=30, interval=1):
         try:
             health = request_json(base_url.rstrip("/") + "/health")
             version = request_json(base_url.rstrip("/") + "/version")
+            if not isinstance(health, dict) or not isinstance(version, dict):
+                raise ValueError("Expected JSON objects from readiness and version endpoints")
             if health.get("status") != "healthy":
                 raise ValueError("Readiness check is not healthy")
             if health.get("version") != expected or version.get("version") != expected:
