@@ -12,20 +12,23 @@ param shutdownTime string = '2300'
 param shutdownTimeZone string = 'India Standard Time'
 
 var tags = { project: 'image-build-deploy-pipeline', purpose: 'student-demo' }
-var init = '''
-#cloud-config
-write_files:
-  - path: /opt/image-pipeline/bootstrap.sh
-    permissions: '0700'
-    encoding: b64
-    content: ${base64(loadTextContent('bootstrap.sh'))}
-  - path: /opt/image-pipeline/bootstrap.yaml
-    permissions: '0600'
-    encoding: b64
-    content: ${base64(loadTextContent('../../k8s/bootstrap.yaml'))}
-runcmd:
-  - [bash, /opt/image-pipeline/bootstrap.sh]
-'''
+var init = {
+  write_files: [
+    {
+      path: '/opt/image-pipeline/bootstrap.sh'
+      permissions: '0700'
+      encoding: 'b64'
+      content: base64(loadTextContent('bootstrap.sh'))
+    }
+    {
+      path: '/opt/image-pipeline/bootstrap.yaml'
+      permissions: '0600'
+      encoding: 'b64'
+      content: base64(loadTextContent('../../k8s/bootstrap.yaml'))
+    }
+  ]
+  runcmd: [['bash', '/opt/image-pipeline/bootstrap.sh']]
+}
 
 resource nsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
   name: '${vmName}-nsg'
@@ -90,7 +93,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = {
     osProfile: {
       computerName: vmName
       adminUsername: adminUsername
-      customData: base64(init)
+      customData: base64('#cloud-config\n${string(init)}')
       linuxConfiguration: {
         disablePasswordAuthentication: true
         provisionVMAgent: true
