@@ -61,7 +61,9 @@ python scripts/traffic_probe.py --url http://127.0.0.1:30080 \
 
 # Scan locally with Trivy 0.76.1, then evaluate the full report.
 trivy image --scanners vuln --format json --output artifacts/trivy-full.json demo-app:FULL_COMMIT
-python scripts/security_gate.py --report artifacts/trivy-full.json
+python scripts/security_gate.py --report artifacts/trivy-full.json \
+  --expected-image demo-app:FULL_COMMIT \
+  --expected-image-id "$(docker image inspect demo-app:FULL_COMMIT --format '{{.Id}}')"
 
 # Optional benchmark: three builds with layer caching disabled and three warm builds.
 bash scripts/measure_build.sh

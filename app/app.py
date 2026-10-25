@@ -24,7 +24,7 @@ def create_app(build_info_path=BUILD_INFO):
     def index():
         return jsonify(
             status="success",
-            message="Automated image build and deployment pipeline",
+            message="Automated image pipeline: verified releases with recovery",
             version=version,
         )
 
