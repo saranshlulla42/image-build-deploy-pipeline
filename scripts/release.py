@@ -11,6 +11,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+if __package__:
+    from .verify_release import verify
+else:
+    from verify_release import verify
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = "pipeline-release-lock"
@@ -23,8 +27,9 @@ class ReleaseError(RuntimeError):
 
 
 class Kube:
-    def __init__(self, context, namespace):
+    def __init__(self, context, namespace, verify_url=None):
         self.base = ["kubectl", "--context", context, "--namespace", namespace]
+        self.verify_url = verify_url
 
     def run(self, *args, document=None, timeout=180):
         result = subprocess.run(
@@ -78,6 +83,8 @@ class Kube:
             self.run("wait", "--for=condition=complete", "job/" + name,
                      f"--timeout={timeout + 5}s", timeout=timeout + 15)
             print(self.run("logs", "job/" + name))
+            if self.verify_url:
+                print(json.dumps(verify(self.verify_url, version, timeout)))
         except Exception:
             try:
                 print(self.run("logs", "job/" + name), file=sys.stderr)
@@ -203,6 +210,7 @@ def main():
     parser.add_argument("--verify-timeout", type=int, default=45)
     parser.add_argument("--service-type", choices=["NodePort", "ClusterIP"], default="NodePort")
     parser.add_argument("--report", default="artifacts/release.json")
+    parser.add_argument("--verify-url", help="Also verify an HTTP route before promotion and after rollback")
     args = parser.parse_args()
     local = args.context.startswith("kind-") or args.context == "minikube"
     if not re.fullmatch(r"[0-9a-f]{40}", args.expected_version):
@@ -215,7 +223,7 @@ def main():
     if args.rollout_timeout < 1 or args.verify_timeout < 10:
         parser.error("Timeouts must be positive; verification needs at least 10 seconds")
     code, report = deploy(
-        Kube(args.context, args.namespace), args.image, args.expected_version,
+        Kube(args.context, args.namespace, args.verify_url), args.image, args.expected_version,
         fault=args.fault_readiness, rollout_timeout=args.rollout_timeout,
         verify_timeout=args.verify_timeout,
         service_type=args.service_type,

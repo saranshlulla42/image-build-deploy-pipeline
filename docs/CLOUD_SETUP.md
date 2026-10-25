@@ -2,9 +2,9 @@
 
 ## Current status
 
-No cloud account or cluster has been supplied. No billable resources have been created, and no cloud deployment has been verified. Leave `PERSISTENT_DEPLOY_ENABLED` unset until the following prerequisites work.
+Azure for Students is now the selected provider. A VM deployment option with infrastructure as code and GitHub OIDC is available in [the Azure guide](AZURE_SETUP.md). Its deployment and verification status is recorded separately from the local experiments. Leave `PERSISTENT_DEPLOY_ENABLED` unset until the chosen target is ready.
 
-The existing stack can be retained: GHCR for images and an existing persistent Kubernetes cluster for runtime. You do not need to replace it with ECR.
+The remainder of this document describes the alternative generic Kubernetes target (`DEPLOY_TARGET` unset or different from `azure-vm`). The Azure VM option keeps its Kubernetes management API private and uses Azure Run Command instead of copying a kubeconfig into GitHub.
 
 ## Choose and prepare a target
 

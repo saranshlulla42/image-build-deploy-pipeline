@@ -2,7 +2,7 @@
 
 A course project that tests a Flask service, builds a Docker image once, scans it, exercises Kubernetes releases and recovery, then publishes the exact tested image to GHCR.
 
-**Current scope:** local Kubernetes integration is runnable without a cloud account. Persistent cloud deployment is implemented as a gated workflow job and remains unconfigured until a cluster and credentials are supplied. A green local test is not proof of a persistent cloud deployment.
+Local Kubernetes integration runs without a cloud account. The persistent Azure option adds Bicep infrastructure, a private Kubernetes management API, temporary GitHub OIDC sign-in, and public application verification. See [Azure setup](docs/AZURE_SETUP.md) for prerequisites, permissions and costs; enable its gated workflow only after the VM is ready. A green local test alone is not evidence of a cloud deployment.
 
 ## What happens on a change?
 
@@ -94,6 +94,8 @@ An amd64 image is built in GitHub. The target cluster must support amd64. Local 
 - `scripts/integration_demo.py`: actual Kubernetes experiment orchestration.
 - `k8s/`: Deployment, Service, local kind configuration and optional cloud bootstrap RBAC.
 - `.github/workflows/pipeline.yml`: validation, publish and optional persistent release.
+- `infra/azure/`: Azure VM, network, shutdown schedule and restricted GitHub federation.
+- `scripts/azure_deploy.py`: checks the actual guest outcome and public app version.
 - `docs/`: explanations, measured results, cloud setup and demonstration instructions.
 
 ## Limitations
@@ -105,7 +107,7 @@ An amd64 image is built in GitHub. The target cluster must support amd64. Local 
 - A ConfigMap lock serializes releases. An interrupted runner can leave a lock; inspect the environment before removing it. See the cloud guide.
 - Snapshot rollback restores the Deployment spec, not Service/IAM/network changes or a deleted image.
 - Runtime and base-image dependencies are pinned; upgrades require refreshing locks/digests, rescanning and retesting.
-- The cloud job has not run until credentials and an actual persistent cluster are configured.
+- The cloud job needs a running provisioned target; Azure daily shutdown requires manual startup before a demonstration.
 
 ## Cleanup
 
