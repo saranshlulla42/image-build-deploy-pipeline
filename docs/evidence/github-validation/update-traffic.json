@@ -1,0 +1,14 @@
+{
+  "started_at": "2026-10-25T12:31:48.711092+00:00",
+  "url": "http://127.0.0.1:30080",
+  "requests": 221,
+  "failures": 0,
+  "versions": {
+    "f1b50f27a1e3d4415c1ae723ec7ed2109c09d017": 221
+  },
+  "errors": [],
+  "command_exit": 0,
+  "elapsed_seconds": 22.022,
+  "observed_requests_per_second": 10.04,
+  "passed": true
+}

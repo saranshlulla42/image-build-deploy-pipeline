@@ -1,0 +1,339 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "16520440898902759196"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "vmName": {
+      "type": "string",
+      "defaultValue": "image-pipeline-vm"
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_B2als_v2"
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "pipelineadmin"
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Public SSH key only. The network does not expose SSH."
+      }
+    },
+    "githubSubject": {
+      "type": "string",
+      "metadata": {
+        "description": "Exact GitHub OIDC subject for the demo environment, including immutable repository IDs when applicable."
+      }
+    },
+    "shutdownTime": {
+      "type": "string",
+      "defaultValue": "2300"
+    },
+    "shutdownTimeZone": {
+      "type": "string",
+      "defaultValue": "India Standard Time"
+    }
+  },
+  "variables": {
+    "$fxv#0": "#!/usr/bin/env bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\napt-get update\napt-get install -y ca-certificates curl python3-yaml nginx\ncurl --fail --location --retry 5 'https://github.com/k3s-io/k3s/releases/download/v1.37.1%2Bk3s1/k3s' -o /usr/local/bin/k3s\necho '92b94582eb7b34a8cf532e6006842b9ed215a6783cf56a3dd6271fd35243b2c0  /usr/local/bin/k3s' | sha256sum --check\nchmod 755 /usr/local/bin/k3s\nmkdir -p /etc/rancher/k3s\ncat > /etc/rancher/k3s/config.yaml <<'CONFIG'\nwrite-kubeconfig-mode: \"0600\"\nsecrets-encryption: true\ndisable:\n  - traefik\n  - servicelb\nCONFIG\ncurl --fail --location --retry 5 'https://raw.githubusercontent.com/k3s-io/k3s/356c025475bbefaa09cf0d7e48e8e2adbbde57db/install.sh' -o /opt/image-pipeline/install-k3s.sh\nINSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC=server sh /opt/image-pipeline/install-k3s.sh\nfor attempt in $(seq 1 60); do\n  if k3s kubectl wait --for=condition=Ready nodes --all --timeout=10s; then break; fi\n  sleep 5\ndone\nk3s kubectl wait --for=condition=Ready nodes --all --timeout=120s\nk3s kubectl apply -f /opt/image-pipeline/bootstrap.yaml\ncat > /etc/nginx/sites-available/default <<'NGINX'\nserver {\n  listen 80 default_server;\n  server_name _;\n  location / {\n    proxy_pass http://127.0.0.1:30080;\n    proxy_connect_timeout 3s;\n    proxy_read_timeout 10s;\n    proxy_set_header Host $host;\n    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n  }\n}\nNGINX\nnginx -t\nsystemctl enable nginx\nsystemctl restart nginx\nmkdir -p /var/lib/image-pipeline\ntouch /var/lib/image-pipeline/bootstrap-complete\n",
+    "$fxv#1": "# Apply once using a cluster administrator identity, not the release identity.\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: image-pipeline\n---\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: pipeline-deployer\n  namespace: image-pipeline\nautomountServiceAccountToken: false\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: pipeline-deployer\n  namespace: image-pipeline\nrules:\n  - apiGroups: [apps]\n    resources: [deployments, replicasets]\n    verbs: [get, list, watch, create, update, patch, delete]\n  - apiGroups: [\"\"]\n    resources: [services, configmaps]\n    verbs: [get, list, watch, create, update, patch, delete]\n  - apiGroups: [\"\"]\n    resources: [pods, pods/log, events]\n    verbs: [get, list, watch]\n  - apiGroups: [batch]\n    resources: [jobs]\n    verbs: [get, list, watch, create, update, patch, delete]\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: pipeline-deployer\n  namespace: image-pipeline\nsubjects:\n  - kind: ServiceAccount\n    name: pipeline-deployer\n    namespace: image-pipeline\nroleRef:\n  kind: Role\n  name: pipeline-deployer\n  apiGroup: rbac.authorization.k8s.io\n",
+    "tags": {
+      "project": "image-build-deploy-pipeline",
+      "purpose": "student-demo"
+    },
+    "init": {
+      "write_files": [
+        {
+          "path": "/opt/image-pipeline/bootstrap.sh",
+          "permissions": "0700",
+          "encoding": "b64",
+          "content": "[base64(variables('$fxv#0'))]"
+        },
+        {
+          "path": "/opt/image-pipeline/bootstrap.yaml",
+          "permissions": "0600",
+          "encoding": "b64",
+          "content": "[base64(variables('$fxv#1'))]"
+        }
+      ],
+      "runcmd": [
+        [
+          "bash",
+          "/opt/image-pipeline/bootstrap.sh"
+        ]
+      ]
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-nsg', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "public-demo-http",
+            "properties": {
+              "priority": 100,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "Internet",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "80"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-vnet', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.60.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "demo",
+            "properties": {
+              "addressPrefix": "10.60.1.0/24",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('vmName')))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('vmName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-ip', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "publicIPAddressVersion": "IPv4"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-nic', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "primary",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[format('{0}/subnets/demo', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('vmName'))))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName')))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName')))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('vmName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "ubuntu-24_04-lts",
+            "sku": "server",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "diskSizeGB": 32,
+            "deleteOption": "Delete",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            }
+          }
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "customData": "[base64(format('#cloud-config\n{0}', string(variables('init'))))]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "provisionVMAgent": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "[format('/home/{0}/.ssh/authorized_keys', parameters('adminUsername'))]",
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmName')))]",
+              "properties": {
+                "primary": true,
+                "deleteOption": "Delete"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DevTestLab/schedules",
+      "apiVersion": "2018-09-15",
+      "name": "[format('shutdown-computevm-{0}', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "status": "Enabled",
+        "taskType": "ComputeVmShutdownTask",
+        "dailyRecurrence": {
+          "time": "[parameters('shutdownTime')]"
+        },
+        "timeZoneId": "[parameters('shutdownTimeZone')]",
+        "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+        "notificationSettings": {
+          "status": "Disabled"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-github', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}/{1}', format('{0}-github', parameters('vmName')), 'github-demo-environment')]",
+      "properties": {
+        "issuer": "https://token.actions.githubusercontent.com",
+        "subject": "[parameters('githubSubject')]",
+        "audiences": [
+          "api://AzureADTokenExchange"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-github', parameters('vmName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleDefinitions",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, 'image-pipeline-run-command')]",
+      "properties": {
+        "roleName": "[format('Image pipeline VM deployer {0}', uniqueString(resourceGroup().id))]",
+        "description": "Read and execute action Run Command on the dedicated demo VM only. Root command access is intentionally limited to this VM.",
+        "type": "CustomRole",
+        "assignableScopes": [
+          "[resourceGroup().id]"
+        ],
+        "permissions": [
+          {
+            "actions": [
+              "Microsoft.Compute/virtualMachines/read",
+              "Microsoft.Compute/virtualMachines/runCommand/action"
+            ],
+            "notActions": [],
+            "dataActions": [],
+            "notDataActions": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+      "name": "[guid(resourceId('Microsoft.Compute/virtualMachines', parameters('vmName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-github', parameters('vmName'))), resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'image-pipeline-run-command')))]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-github', parameters('vmName'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'image-pipeline-run-command'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-github', parameters('vmName')))]",
+        "[resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'image-pipeline-run-command'))]",
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "publicUrl": {
+      "type": "string",
+      "value": "[format('http://{0}', reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName'))), '2024-05-01').ipAddress)]"
+    },
+    "vmResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+    },
+    "githubClientId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-github', parameters('vmName'))), '2023-01-31').clientId]"
+    },
+    "tenantId": {
+      "type": "string",
+      "value": "[tenant().tenantId]"
+    },
+    "subscriptionId": {
+      "type": "string",
+      "value": "[subscription().subscriptionId]"
+    }
+  }
+}

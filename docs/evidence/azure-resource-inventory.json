@@ -1,0 +1,42 @@
+[
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm-github",
+    "type": "Microsoft.ManagedIdentity/userAssignedIdentities"
+  },
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm-ip",
+    "type": "Microsoft.Network/publicIPAddresses"
+  },
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm-nsg",
+    "type": "Microsoft.Network/networkSecurityGroups"
+  },
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm-vnet",
+    "type": "Microsoft.Network/virtualNetworks"
+  },
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm-nic",
+    "type": "Microsoft.Network/networkInterfaces"
+  },
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm",
+    "type": "Microsoft.Compute/virtualMachines"
+  },
+  {
+    "location": "koreacentral",
+    "name": "shutdown-computevm-image-pipeline-vm",
+    "type": "Microsoft.DevTestLab/schedules"
+  },
+  {
+    "location": "koreacentral",
+    "name": "image-pipeline-vm_OsDisk_1_2ac1e3c43ccc4828bc4c109e1d6336d1",
+    "type": "Microsoft.Compute/disks"
+  }
+]

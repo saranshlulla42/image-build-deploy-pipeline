@@ -59,9 +59,6 @@ def main():
         ("Image size", f"{build['size_bytes']} bytes ({build['size_bytes'] / 1048576:.2f} MiB reported by Docker)"),
         ("Actual vulnerability scan", f"{len(findings)} package findings: " + ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))),
         ("Security policy", f"{len(security['blocked'])} fixable HIGH/CRITICAL blocked findings; {len(security['unfixed_high_critical'])} unfixed HIGH/CRITICAL package findings retained"),
-        ("Persistent cloud deployment", "Not configured; no cloud account supplied"),
-        ("Updated GitHub workflow execution", "Not executed remotely; local actionlint validation passed"),
-        ("GHCR publishing of updated code", "Not performed from this workspace"),
     ]
     if promotion:
         rows.insert(9, ("Promotion between real source revisions", f"{promotion['outcome']}; {promotion['elapsed_seconds']} s; {promotion_traffic['requests']} requests; {promotion_traffic['failures']} failures"))
@@ -78,7 +75,7 @@ def main():
     text += "These are single local experiment runs, not statistical availability guarantees. The first rolling-update test uses two tags for one artifact to isolate rollout mechanics. The final promotion, when recorded above, uses two real Git revisions and separately built artifacts. Traffic uses NodePort routing throughout the command, including verification/recovery and a final observation interval.\n\n"
     text += "Recovery time starts after failure detection; it excludes the time spent waiting for rollout/verification failure. Failed release reports deliberately record nonzero command results even when recovery succeeds.\n\n"
     text += "Security policy permits unfixed HIGH/CRITICAL findings while reporting them. The image is not vulnerability-free; findings are package-level occurrences and can repeat the same vulnerability across packages. No intentionally vulnerable image was deployed to demonstrate the policy. Fixture tests simulate rejection separately.\n\n"
-    text += "No cold/warm-cache comparison, cloud uptime measurement, provider bill, or new remote Actions run is claimed. Earlier inconsistent benchmark figures have been replaced by these retained measurements.\n\n"
+    text += "This report summarizes local artifact files only; it does not establish remote CI, cloud deployment, cloud uptime or billing results. See [cloud validation](CLOUD_RESULTS.md) for the separately retained Azure and GitHub evidence. No cold/warm-cache comparison is claimed here.\n\n"
     if args.snapshot:
         evidence = args.output.parent / "evidence"
         evidence.mkdir(exist_ok=True)

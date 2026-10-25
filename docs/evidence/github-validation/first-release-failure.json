@@ -1,0 +1,9 @@
+{
+  "started_at": "2026-10-25T12:33:35.063854+00:00",
+  "image": "demo-app:f1b50f27a1e3d4415c1ae723ec7ed2109c09d017",
+  "version": "f1b50f27a1e3d4415c1ae723ec7ed2109c09d017",
+  "outcome": "failed_first_deployment",
+  "error": "error: timed out waiting for the condition",
+  "recovery_seconds": 0.133,
+  "elapsed_seconds": 25.552
+}

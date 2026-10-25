@@ -16,6 +16,21 @@ Pull requests run application tests, image checks and a temporary kind cluster t
 
 Merges to main additionally publish the image. The optional persistent job updates an existing cluster instead of creating a new one. Until that job is configured, the project has verified integration and publishing, but no persistent cloud application.
 
+For this Azure assessment, the persistent target is a dedicated VM running k3s. GitHub exchanges its temporary OIDC identity for Azure access scoped to that VM, then uses Run Command to start the release. The VM generates a short-lived Kubernetes service-account token locally. The cluster administrator configuration never leaves the VM.
+
+```mermaid
+flowchart LR
+  A[Commit to main] --> B[Tests and build once]
+  B --> C[Scan and kind recovery tests]
+  C --> D[GHCR image digest]
+  D --> E[GitHub OIDC and Azure Run Command]
+  E --> F[k3s verified rollout]
+  F --> G[Public HTTP version check]
+  F -->|verification fails| H[Restore and verify previous release]
+```
+
+Public requests enter nginx on port 80, reach the private NodePort Service, then go to a ready app pod. Only port 80 is publicly allowed. Two pods share one VM, so this is not protection against VM failure. The local nginx route is checked within the promotion/rollback transaction; an independent public check runs from GitHub afterward. Azure's API accepting a command does not mean the guest release succeeded: the pipeline checks a compact guest report and exit-code marker as well.
+
 ## Readiness, liveness and rollout
 
 Readiness `/health` controls whether a pod is eligible for Service traffic. Liveness `/live` checks whether the process responds. A demo readiness failure therefore does not create a liveness restart loop.

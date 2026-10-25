@@ -6,6 +6,8 @@ This project extends the [original starter repository](https://github.com/2023ni
 
 Local Kubernetes integration runs without a cloud account. The persistent Azure option adds Bicep infrastructure, a private Kubernetes management API, temporary GitHub OIDC sign-in, and public application verification. See [Azure setup](docs/AZURE_SETUP.md) for prerequisites, permissions and costs; enable its gated workflow only after the VM is ready. A green local test alone is not evidence of a cloud deployment.
 
+**Verified assessment deployment:** [public app](http://20.200.216.35), [successful complete workflow](https://github.com/saranshlulla42/image-build-deploy-pipeline/actions/runs/40193351697), [cloud results](docs/CLOUD_RESULTS.md), and [presentation guide](docs/ASSESSMENT_GUIDE.md). The VM shuts down at 23:00 India Standard Time each day and requires manual startup before a demonstration. The cloud rollback experiment had 0 failures in 644 samples; the automatic update window had 1 client timeout in 694 samples. See the report for the measured limits.
+
 ## What happens on a change?
 
 ```text

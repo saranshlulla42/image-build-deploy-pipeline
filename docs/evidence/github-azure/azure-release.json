@@ -1,0 +1,10 @@
+{
+  "outcome": "succeeded",
+  "image": "ghcr.io/saranshlulla42/image-build-deploy-pipeline@sha256:b81631e647ac2dd7d2d20d9219e7265ef24287b1374b9808104af1e528c3e925",
+  "version": "f1b50f27a1e3d4415c1ae723ec7ed2109c09d017",
+  "elapsed_seconds": 27.715,
+  "public_check": {
+    "status": "verified",
+    "version": "f1b50f27a1e3d4415c1ae723ec7ed2109c09d017"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "value": [
+    {
+      "code": "ProvisioningState/succeeded",
+      "displayStatus": "Provisioning succeeded",
+      "level": "Info",
+      "message": "Enable succeeded: \n[stdout]\nPIPELINE_REPORT=eyJvdXRjb21lIjogInN1Y2NlZWRlZCIsICJpbWFnZSI6ICJnaGNyLmlvL3NhcmFuc2hsdWxsYTQyL2ltYWdlLWJ1aWxkLWRlcGxveS1waXBlbGluZUBzaGEyNTY6YjgxNjMxZTY0N2FjMmRkN2QyZDIwZDkyMTllNzI2NWVmMjQyODdiMTM3NGI5ODA4MTA0YWYxZTUyOGMzZTkyNSIsICJ2ZXJzaW9uIjogImYxYjUwZjI3YTFlM2Q0NDE1YzFhZTcyM2VjN2VkMjEwOWMwOWQwMTciLCAiZWxhcHNlZF9zZWNvbmRzIjogMjcuNzE1fQ==\nPIPELINE_EXIT_CODE=0\n\n[stderr]\n"
+    }
+  ]
+}

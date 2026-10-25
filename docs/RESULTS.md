@@ -1,12 +1,12 @@
 # Recorded validation results
 
-Local validation: **Passed**. Generated 2026-10-25T10:41:37.059719+00:00.
+Local validation: **Passed**. Generated 2026-10-25T12:41:52.608817+00:00.
 
 Environment: macOS arm64 Docker host, Linux arm64 application container, one local kind node. Application runtime: Python 3.12. Unit tests were run with the local Python interpreter; see the JUnit report.
 
 | Check | Observed result |
 |---|---|
-| Application, release, scan-policy and traffic tests | 47 tests; 0 failures; 0 errors (latest unit suite; earlier local integration measurements retained below) |
+| Application, release, scan-policy and traffic tests | 38 tests; 0 failures; 0 errors |
 | Initial verified release | succeeded; 8.596 s |
 | Rolling update | succeeded; 16.782 s |
 | Rolling-update traffic | 175 requests; 0 failures; 17.935 s; 9.76 req/s |
@@ -20,9 +20,6 @@ Environment: macOS arm64 Docker host, Linux arm64 application container, one loc
 | Image size | 213129866 bytes (203.26 MiB reported by Docker) |
 | Actual vulnerability scan | 170 package findings: HIGH=44, LOW=62, MEDIUM=63, UNKNOWN=1 |
 | Security policy | 0 fixable HIGH/CRITICAL blocked findings; 44 unfixed HIGH/CRITICAL package findings retained |
-| Persistent cloud deployment | Azure account connected; replacement region deployment awaiting approval |
-| Updated GitHub workflow execution | Remote runs 40189592572 and 40190881842 passed; Azure deployment job remained gated |
-| GHCR publishing of updated code | Tested amd64 images published to public GHCR by GitHub Actions |
 
 Five-scenario integration artifact source: `27c19b837e93cd5d9c44dc83a5af48d0e7ba39a6`. Latest built artifact source: `b2a0fbdee683813bfded6626cde0fb333933fa2d`.
 
@@ -39,15 +36,24 @@ Recovery time starts after failure detection; it excludes the time spent waiting
 
 Security policy permits unfixed HIGH/CRITICAL findings while reporting them. The image is not vulnerability-free; findings are package-level occurrences and can repeat the same vulnerability across packages. No intentionally vulnerable image was deployed to demonstrate the policy. Fixture tests simulate rejection separately.
 
-No cold/warm-cache comparison, cloud uptime measurement, provider bill, is claimed. Two remote Actions runs passed validation and publishing. Earlier inconsistent benchmark figures have been replaced by these retained measurements.
+This report summarizes local artifact files only; it does not establish remote CI, cloud deployment, cloud uptime or billing results. See [cloud validation](CLOUD_RESULTS.md) for the separately retained Azure and GitHub evidence. No cold/warm-cache comparison is claimed here.
 
 ## Retained evidence
 
+- [azure-bootstrap.json](evidence/azure-bootstrap.json)
+- [azure-final-inspection.json](evidence/azure-final-inspection.json)
+- [azure-initial-release.json](evidence/azure-initial-release.json)
+- [azure-resource-inventory.json](evidence/azure-resource-inventory.json)
+- [azure-unit-tests.xml](evidence/azure-unit-tests.xml)
+- [azure-update-traffic.json](evidence/azure-update-traffic.json)
+- [azure-wrong-version-release.json](evidence/azure-wrong-version-release.json)
+- [azure-wrong-version-traffic.json](evidence/azure-wrong-version-traffic.json)
 - [container-build.json](evidence/container-build.json)
 - [container-smoke.log](evidence/container-smoke.log)
 - [failed-release.json](evidence/failed-release.json)
 - [failure-traffic.json](evidence/failure-traffic.json)
 - [first-release-failure.json](evidence/first-release-failure.json)
+- [github-cloud-run-summary.json](evidence/github-cloud-run-summary.json)
 - [initial-release.json](evidence/initial-release.json)
 - [integration-summary.json](evidence/integration-summary.json)
 - [integration.log](evidence/integration.log)

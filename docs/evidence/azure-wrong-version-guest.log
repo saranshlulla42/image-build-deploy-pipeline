@@ -1,0 +1,18 @@
+Enable succeeded:
+[stdout]
+{"status": "verified", "version": "0e5dca8355538796ccb409ed5b228b212a71beba"}
+{"status": "verified", "version": "0e5dca8355538796ccb409ed5b228b212a71beba"}
+{"status": "verified", "version": "0e5dca8355538796ccb409ed5b228b212a71beba"}
+{"status": "verified", "version": "0e5dca8355538796ccb409ed5b228b212a71beba"}
+{
+  "started_at": "2026-10-25T12:29:57.821983+00:00",
+  "image": "ghcr.io/saranshlulla42/image-build-deploy-pipeline@sha256:2e1f01c98f29bf6ce3085f7350e10eb502c69af13ebbaac5758c3cec940abc03",
+  "version": "869d8575e4edef86b4b0630f66688c7ed56d6a63",
+  "outcome": "failed_rolled_back",
+  "error": "error: timed out waiting for the condition on jobs/release-check-62e55a8e11",
+  "restored_version": "0e5dca8355538796ccb409ed5b228b212a71beba",
+  "recovery_seconds": 18.081,
+  "elapsed_seconds": 149.975
+}
+
+[stderr]

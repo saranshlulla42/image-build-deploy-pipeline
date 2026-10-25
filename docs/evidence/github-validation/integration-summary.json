@@ -1,0 +1,14 @@
+{
+  "environment": "local-kind",
+  "context": "kind-ci-cluster",
+  "source_commit": "f1b50f27a1e3d4415c1ae723ec7ed2109c09d017",
+  "scenarios": [
+    "initial-release",
+    "rolling-update",
+    "unhealthy-release-and-rollback",
+    "wrong-version-rejected",
+    "first-deployment-failure"
+  ],
+  "passed": true,
+  "elapsed_seconds": 145.695
+}

@@ -1,0 +1,10 @@
+{
+  "started_at": "2026-10-25T12:32:46.939047+00:00",
+  "image": "demo-app:f1b50f27a1e3d4415c1ae723ec7ed2109c09d017",
+  "version": "0000000000000000000000000000000000000000",
+  "outcome": "failed_rolled_back",
+  "error": "error: timed out waiting for the condition on jobs/release-check-7cc7872f4b",
+  "restored_version": "f1b50f27a1e3d4415c1ae723ec7ed2109c09d017",
+  "recovery_seconds": 15.54,
+  "elapsed_seconds": 47.893
+}
